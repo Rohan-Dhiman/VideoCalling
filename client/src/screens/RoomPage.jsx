@@ -3,7 +3,14 @@ import ReactPlayer from "react-player";
 import peer from "../service/peer";
 import { useSocket } from "../context/SocketProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMicrophone, faMicrophoneSlash, faVideo, faVideoSlash, faDesktop, faStop } from "@fortawesome/free-solid-svg-icons";
+import {
+  faMicrophone,
+  faMicrophoneSlash,
+  faVideo,
+  faVideoSlash,
+  faDesktop,
+  faStop,
+} from "@fortawesome/free-solid-svg-icons";
 
 const RoomPage = () => {
   const socket = useSocket();
@@ -26,13 +33,16 @@ const RoomPage = () => {
     setUserCount((prevCount) => prevCount + 1);
   }, []);
 
-  const handleUserLeft = useCallback(({ email, id }) => {
-    console.log(`Email ${email} left room`);
-    setUserCount((prevCount) => prevCount - 1);
-    if (id === remoteSocketId) {
-      setRemoteSocketId(null);
-    }
-  }, [remoteSocketId]);
+  const handleUserLeft = useCallback(
+    ({ email, id }) => {
+      console.log(`Email ${email} left room`);
+      setUserCount((prevCount) => prevCount - 1);
+      if (id === remoteSocketId) {
+        setRemoteSocketId(null);
+      }
+    },
+    [remoteSocketId]
+  );
 
   const handleCallUser = useCallback(async () => {
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -74,58 +84,58 @@ const RoomPage = () => {
     try {
       // If already sharing, stop sharing
       if (isScreenSharing && myScreen) {
-        myScreen.getTracks().forEach(track => {
+        myScreen.getTracks().forEach((track) => {
           track.stop();
-          
+
           // Find and remove this track from the peer connection
-          peer.peer.getSenders().forEach(sender => {
+          peer.peer.getSenders().forEach((sender) => {
             if (sender.track === track) {
               peer.peer.removeTrack(sender);
             }
           });
-          
+
           // Remove from addedTracks
-          setAddedTracks(prev => {
+          setAddedTracks((prev) => {
             const newSet = new Set(prev);
             newSet.delete(track.id);
             return newSet;
           });
         });
-        
+
         setMyScreen(null);
         setIsScreenSharing(false);
-        
+
         // Notify the user on UI
         console.log("Screen sharing stopped");
         return;
       }
-      
+
       // Start sharing
       const screen = await navigator.mediaDevices.getDisplayMedia({
         cursor: true,
         video: true,
         audio: true,
       });
-      
+
       // Handle the case when user cancels the screen share dialog
-      screen.getVideoTracks()[0].addEventListener('ended', () => {
+      screen.getVideoTracks()[0].addEventListener("ended", () => {
         console.log("User ended screen sharing");
         setMyScreen(null);
         setIsScreenSharing(false);
-        
+
         // Remove tracks from peer connection
-        screen.getTracks().forEach(track => {
-          peer.peer.getSenders().forEach(sender => {
+        screen.getTracks().forEach((track) => {
+          peer.peer.getSenders().forEach((sender) => {
             if (sender.track === track) {
               peer.peer.removeTrack(sender);
             }
           });
         });
       });
-      
+
       setMyScreen(screen);
       setIsScreenSharing(true);
-      
+
       // Add tracks to peer connection
       if (screen) {
         for (const track of screen.getTracks()) {
@@ -186,13 +196,24 @@ const RoomPage = () => {
   const sendMessage = () => {
     if (message.trim() !== "") {
       socket.emit("message", { to: remoteSocketId, message });
-      setMessages((prevMessages) => [...prevMessages, { from: "me", text: message }]);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { from: "me", text: message },
+      ]);
       setMessage("");
     }
   };
 
-  const handleReceiveMessage = useCallback((msg) => {
-    setMessages((prevMessages) => [...prevMessages, { from: "remote", text: msg }]);
+  const handleReceiveMessage = useCallback((data) => {
+    if (!data || typeof data.message !== "string") {
+      console.warn("Received invalid message:", data);
+      return;
+    }
+
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      { from: "remote", text: data.message },
+    ]);
   }, []);
 
   const handleEndCall = useCallback(() => {
@@ -207,18 +228,18 @@ const RoomPage = () => {
     socket.off("message", handleReceiveMessage);
 
     if (myStream) {
-      myStream.getTracks().forEach(track => track.stop());
+      myStream.getTracks().forEach((track) => track.stop());
       setMyStream(null);
     }
 
     if (myScreen) {
-      myScreen.getTracks().forEach(track => track.stop());
+      myScreen.getTracks().forEach((track) => track.stop());
       setMyScreen(null);
       setIsScreenSharing(false);
     }
 
     if (remoteStream) {
-      remoteStream.getTracks().forEach(track => track.stop());
+      remoteStream.getTracks().forEach((track) => track.stop());
       setRemoteStream(null);
     }
 
@@ -236,33 +257,33 @@ const RoomPage = () => {
     myStream,
     myScreen,
     remoteStream,
-    remoteSocketId
+    remoteSocketId,
   ]);
 
   const handleCallEnded = useCallback(() => {
     if (myStream) {
-      myStream.getTracks().forEach(track => track.stop());
+      myStream.getTracks().forEach((track) => track.stop());
       setMyStream(null);
     }
 
     if (myScreen) {
-      myScreen.getTracks().forEach(track => track.stop());
+      myScreen.getTracks().forEach((track) => track.stop());
       setMyScreen(null);
       setIsScreenSharing(false);
     }
 
     if (remoteStream) {
-      remoteStream.getTracks().forEach(track => track.stop());
+      remoteStream.getTracks().forEach((track) => track.stop());
       setRemoteStream(null);
     }
-    
+
     setRemoteSocketId(null);
     setAddedTracks(new Set());
   }, [myStream, myScreen, remoteStream]);
 
   const toggleAudio = () => {
     if (myStream) {
-      myStream.getAudioTracks().forEach(track => {
+      myStream.getAudioTracks().forEach((track) => {
         track.enabled = !track.enabled;
       });
       setIsAudioMuted(!isAudioMuted);
@@ -271,7 +292,7 @@ const RoomPage = () => {
 
   const toggleVideo = () => {
     if (myStream) {
-      myStream.getVideoTracks().forEach(track => {
+      myStream.getVideoTracks().forEach((track) => {
         track.enabled = !track.enabled;
       });
       setIsVideoStopped(!isVideoStopped);
@@ -307,75 +328,64 @@ const RoomPage = () => {
     handleNegoNeedIncomming,
     handleNegoNeedFinal,
     handleReceiveMessage,
-    handleCallEnded
+    handleCallEnded,
   ]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen w-screen bg-gray-100">
-      <h1 className="text-3xl font-bold mb-6">Video Call Room</h1>
+    <div className="flex flex-col items-center justify-between min-h-screen w-screen bg-gray-100">
+      <h1 className="text-3xl font-bold my-4">Video Call Room</h1>
 
-      <div className="Streams flex flex-col md:flex-row items-center w-5/6 h-full">
-        {myStream && (
-          <div className="mb-4 w-full max-w-2xl relative">
-            <h2 className="text-xl font-bold mb-2">My Stream</h2>
-            <div className="relative pb-9/16 h-64 w-full">
-              <ReactPlayer
-                playing
-                muted
-                url={myStream}
-                width="100%"
-                height="100%"
-                className="absolute top-0 left-0"
-              />
-              <div className="absolute top-0 right-0 flex space-x-2 p-2">
-                <button onClick={toggleAudio} className="bg-gray-800 text-white p-2 rounded-full">
-                  <FontAwesomeIcon icon={isAudioMuted ? faMicrophoneSlash : faMicrophone} />
-                </button>
-                <button onClick={toggleVideo} className="bg-gray-800 text-white p-2 rounded-full">
-                  <FontAwesomeIcon icon={isVideoStopped ? faVideoSlash : faVideo} />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {myScreen && (
-          <div className="mb-4 w-full max-w-2xl relative">
-            <h2 className="text-xl font-bold mb-2">My Screen Share</h2>
-            <div className="relative pb-9/16 h-64 w-full">
-              <ReactPlayer
-                playing
-                muted
-                url={myScreen}
-                width="100%"
-                height="100%"
-                className="absolute top-0 left-0"
-              />
-            </div>
-          </div>
-        )}
-
+      <div className="relative w-11/12 h-[70vh] bg-black">
+        {/* Remote Stream - takes most of the screen */}
         {remoteStream && (
-          <div className="w-full max-w-2xl">
-            <h2 className="text-xl font-bold mb-2">Remote Stream</h2>
-            <div className="relative pb-9/16 h-64 w-full">
-              <ReactPlayer
-                playing
-                url={remoteStream}
-                width="100%"
-                height="100%"
-                className="absolute top-0 left-0"
-              />
+          <ReactPlayer
+            playing
+            url={remoteStream}
+            width="100%"
+            height="100%"
+            className="absolute top-0 left-0 object-cover"
+          />
+        )}
+
+        {/* My Stream - bottom right corner */}
+        {myStream && (
+          <div className="absolute bottom-4 right-4 w-48 h-32 shadow-lg border-2 border-white z-10">
+            <ReactPlayer
+              playing
+              muted
+              url={myStream}
+              width="100%"
+              height="100%"
+              className="rounded"
+            />
+            <div className="absolute top-1 right-1 flex space-x-1">
+              <button
+                onClick={toggleAudio}
+                className="bg-gray-800 text-white p-1 rounded-full text-xs"
+              >
+                <FontAwesomeIcon
+                  icon={isAudioMuted ? faMicrophoneSlash : faMicrophone}
+                />
+              </button>
+              <button
+                onClick={toggleVideo}
+                className="bg-gray-800 text-white p-1 rounded-full text-xs"
+              >
+                <FontAwesomeIcon
+                  icon={isVideoStopped ? faVideoSlash : faVideo}
+                />
+              </button>
             </div>
           </div>
         )}
       </div>
 
-      <div className="mb-4 flex flex-wrap justify-center space-x-4">
+      {/* Button bar */}
+      <div className="w-full bg-white py-3 px-4 flex flex-wrap justify-center gap-2 shadow-md">
         {userCount > 0 && !myStream && (
           <button
             onClick={handleCallUser}
-            className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 m-1"
+            className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
           >
             Start Call
           </button>
@@ -384,24 +394,22 @@ const RoomPage = () => {
           <h4 className="text-red-500">No one in the room</h4>
         )}
         {myStream && (
-          <button
-            onClick={sendStreams}
-            className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 m-1"
-          >
-            Share My Stream
-          </button>
-        )}
-        {myStream && (
           <>
             <button
+              onClick={sendStreams}
+              className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600"
+            >
+              Share My Stream
+            </button>
+            <button
               onClick={handleEndCall}
-              className="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 m-1"
+              className="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600"
             >
               End Call
             </button>
             <button
               onClick={sendScreen}
-              className="bg-purple-500 text-white py-2 px-4 rounded-md hover:bg-purple-600 m-1"
+              className="bg-purple-500 text-white py-2 px-4 rounded-md hover:bg-purple-600"
             >
               {isScreenSharing ? (
                 <>
@@ -417,53 +425,69 @@ const RoomPage = () => {
             </button>
           </>
         )}
-
         {remoteSocketId && (
           <button
             onClick={() => setIsChatOpen(!isChatOpen)}
-            className="bg-yellow-500 text-white py-2 px-4 rounded-md hover:bg-yellow-600 m-1"
+            className="bg-yellow-500 text-white py-2 px-4 rounded-md hover:bg-yellow-600"
           >
             Chat
           </button>
         )}
       </div>
 
-      <div className="flex items-center mb-4">
-        <span
-          className={`w-4 h-4 rounded-full mr-2 ${
-            remoteSocketId ? "bg-green-500" : "bg-red-500"
-          }`}
-        ></span>
-        <h4 className={remoteSocketId ? "text-green-500" : "text-red-500"}>
-          {remoteSocketId ? "Connected" : "Waiting for someone to join..."}
-        </h4>
-      </div>
+      {/* Connection status */}
+      {!remoteSocketId && (
+        <div className="flex items-center mb-4">
+          <span
+            className={`w-4 h-4 rounded-full mr-2 ${
+              remoteSocketId ? "bg-green-500" : "bg-red-500"
+            }`}
+          ></span>
+          <h4 className={remoteSocketId ? "text-green-500" : "text-red-500"}>
+            {remoteSocketId ? "Connected" : "Waiting for someone to join..."}
+          </h4>
+        </div>
+      )}
 
       {isChatOpen && (
-        <div className="fixed bottom-0 right-0 w-full md:w-1/3 h-1/3 bg-white shadow-lg p-4">
-          <h2 className="text-xl font-bold mb-2">Chat</h2>
-          <ul id="messages" className="overflow-y-auto h-2/3 mb-2">
+        <div className="fixed bottom-4 right-4 w-[95%] md:w-[400px] h-[300px] bg-white shadow-2xl rounded-xl z-50 animate-slideUp flex flex-col">
+          <h2 className="text-xl font-bold p-4 pb-2 border-b">Chat</h2>
+
+          <ul
+            id="messages"
+            className="flex-1 overflow-y-auto px-4 py-2 space-y-2"
+          >
             {messages.map((msg, index) => (
-              <li key={index} className={msg.from === "me" ? "text-right" : "text-left"}>
+              <li
+                key={index}
+                className={`p-2 rounded-md max-w-[80%] break-words ${
+                  msg.from === "me"
+                    ? "bg-blue-100 text-right self-end ml-auto"
+                    : "bg-gray-200 text-left self-start mr-auto"
+                }`}
+              >
                 {msg.text}
-              </li> 
+              </li>
             ))}
           </ul>
-          <div className="flex">
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="flex-grow px-3 py-2 border border-gray-300 rounded-md"
-              placeholder="Type a message"
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-            />
-            <button
-              onClick={sendMessage}
-              className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 ml-2"
-            >
-              Send
-            </button>
+
+          <div className="p-4 pt-2 border-t">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="flex-grow px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="Type a message"
+                onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+              />
+              <button
+                onClick={sendMessage}
+                className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
+              >
+                Send
+              </button>
+            </div>
           </div>
         </div>
       )}
